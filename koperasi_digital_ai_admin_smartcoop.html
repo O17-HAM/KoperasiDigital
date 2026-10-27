@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KopAI - Koperasi Digital Berbasis AI</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            navy: '#0F172A',
+                            emerald: '#10B981',
+                            accent: '#06B6D4'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Courier New', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+            background-color: #f8fafc;
+        }
+
+        /* Modern UI Elements */
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        
+        /* Animations */
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        .slide-up { animation: slideUp 0.4s ease-out forwards; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Print Styles for Digital Receipt */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #print-area, #print-area * {
+                visibility: visible;
+            }
+            #print-area {
+                position: absolute;
+                left: 50%;
+                top: 0;
+                transform: translateX(-50%);
+                width: 100%;
+                max-width: 80mm; /* Standard thermal receipt width */
+                box-shadow: none !important;
+                border: none !important;
+                margin: 0;
+                padding: 15px;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="text-slate-800 font-sans antialiased overflow-x-hidden selection:bg-brand-emerald selection:text-white min-h-screen flex flex-col">
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- ========================================== -->
+    <!-- 1. LOGIN VIEW -->
+    <!-- ========================================== -->
+    <main id="view-login" class="flex-1 flex items-center justify-center min-h-screen relative p-4 fade-in bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-100 via-slate-50 to-slate-200">
+        <div class="absolute top-10 left-10 w-72 h-72 bg-emerald-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30"></div>
+        <div class="absolute top-10 right-10 w-72 h-72 bg-cyan-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30"></div>
+        
+        <div class="glass w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row relative z-10 slide-up">
+            <!-- Left Info Panel -->
+            <div class="md:w-5/12 bg-brand-navy p-8 text-white flex flex-col justify-center relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 opacity-10">
+                    <i data-lucide="bot" class="w-64 h-64"></i>
+                </div>
+                <div class="relative z-10">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-emerald-400 to-cyan-500 flex items-center justify-center shadow-lg mb-6">
+                        <i data-lucide="shopping-cart" class="w-7 h-7 text-white"></i>
+                    </div>
+                    <h1 class="text-3xl font-extrabold mb-2">KopAI</h1>
+                    <p class="text-emerald-400 font-medium mb-6">Koperasi Digital Berbasis AI</p>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        Sistem manajemen koperasi modern. Belanja cerdas dengan bantuan AI, transaksi tanpa antre.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Right Login Panel -->
+            <div class="md:w-7/12 p-8 md:p-12 relative">
+                <!-- Role Toggle (3 Tabs: Masuk Siswa, Daftar Siswa, Admin) -->
+                <div class="flex p-1 bg-slate-100 rounded-xl mb-6 w-full justify-center overflow-x-auto no-scrollbar">
+                    <button onclick="toggleAuthTab('login-siswa')" id="btn-tab-login-siswa" class="px-4 py-2 text-xs font-semibold rounded-lg bg-white shadow-sm text-brand-navy transition-all whitespace-nowrap">Masuk Siswa</button>
+                    <button onclick="toggleAuthTab('signup-siswa')" id="btn-tab-signup-siswa" class="px-4 py-2 text-xs font-semibold rounded-lg text-slate-500 hover:text-slate-800 transition-all whitespace-nowrap">Daftar Siswa</button>
+                    <button onclick="toggleAuthTab('login-admin')" id="btn-tab-login-admin" class="px-4 py-2 text-xs font-semibold rounded-lg text-slate-500 hover:text-slate-800 transition-all whitespace-nowrap">Petugas Admin</button>
+                </div>
+
+                <!-- Form Login Siswa -->
+                <form id="form-login-siswa" onsubmit="handleLoginSiswa(event)" class="space-y-4 fade-in block">
+                    <div class="text-center mb-4">
+                        <h2 class="text-2xl font-bold text-slate-800">Masuk Siswa</h2>
+                        <p class="text-xs text-slate-500 mt-1">Default Demo: <span class="font-mono bg-slate-100 px-1 rounded">siswa</span> / <span class="font-mono bg-slate-100 px-1 rounded">siswa123</span></p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Username / Nama</label>
+                        <input type="text" id="loginSiswaUser" placeholder="Masukkan username" required class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-brand-emerald bg-white text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Password</label>
+                        <input type="password" id="loginSiswaPass" placeholder="••••••••" required class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-brand-emerald bg-white text-sm">
+                    </div>
+                    <button type="submit" class="w-full py-3 bg-brand-emerald hover:bg-emerald-600 text-white font-bold rounded-xl shadow-lg transition-all mt-2 flex items-center justify-center gap-2 text-sm">
+                        <i data-lucide="log-in" class="w-4 h-4"></i> Masuk Koperasi
+                    </button>
+                </form>
+
+                <!-- Form Sign Up / Pendaftaran Siswa Baru -->
+                <form id="form-signup-siswa" onsubmit="handleRegisterSiswa(event)" class="space-y-4 fade-in hidden">
+                    <div class="text-center mb-4">
+                        <h2 class="text-2xl font-bold text-slate-800">Daftar Akun Siswa</h2>
+                        <p class="text-xs text-slate-500 mt-1">Isi data diri untuk belanja di KopAI.</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Lengkap / Username</label>
+                        <input type="text" id="regSiswaUser" placeholder="Cth: Budi Santoso" required class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-brand-emerald bg-white text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Kelas</label>
+                        <input type="text" id="regSiswaClass" placeholder="Cth: XI PPLG 1 / XII RPL 2" required class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-brand-emerald bg-white text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Password</label>
+                        <input type="password" id="regSiswaPass" placeholder="Buat password aman" required class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-brand-emerald bg-white text-sm">
+                    </div>
+                    <button type="submit" class="w-full py-3 bg-brand-navy hover:bg-slate-800 text-white font-bold rounded-xl shadow-lg transition-all mt-2 flex items-center justify-center gap-2 text-sm">
+                        <i data-lucide="user-plus" class="w-4 h-4"></i> Buat Akun & Masuk
+                    </button>
+                </form>
+
+                <!-- Form Admin -->
+                <form id="form-login-admin" onsubmit="handleLoginAdmin(event)" class="space-y-4 fade-in hidden">
+                    <div class="text-center mb-4">
+                        <h2 class="text-2xl font-bold text-brand-navy">Portal Petugas Admin</h2>
+                        <p class="text-xs text-slate-500 mt-1">Default Login: <span class="font-mono bg-slate-100 px-1 rounded">admin</span> / <span class="font-mono bg-slate-100 px-1 rounded">admin123</span></p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Username Admin</label>
+                        <input type="text" id="loginAdminUser" required class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-brand-navy bg-white text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Password</label>
+                        <input type="password" id="loginAdminPass" required class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-brand-navy bg-white text-sm">
+                    </div>
+                    <button type="submit" class="w-full py-3 bg-brand-navy hover:bg-slate-800 text-white font-bold rounded-xl shadow-lg transition-all mt-2 flex items-center justify-center gap-2 text-sm">
+                        <i data-lucide="shield-check" class="w-4 h-4"></i> Login Dashboard Admin
+                    </button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- ========================================== -->
+    <!-- 2. STUDENT VIEW -->
+    <!-- ========================================== -->
+    <div id="view-student" class="hidden flex-col min-h-screen w-full">
+        <!-- Student Navbar -->
+        <header class="sticky top-0 z-40 glass border-b border-slate-200 shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-brand-navy to-brand-emerald flex items-center justify-center text-white">
+                        <i data-lucide="bot" class="w-5 h-5"></i>
+                    </div>
+                    <span class="text-lg font-bold bg-gradient-to-r from-brand-navy to-brand-emerald bg-clip-text text-transparent">KopAI</span>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <div class="text-right hidden sm:block mr-2">
+                        <p id="student-display-name" class="text-sm font-bold text-slate-800 leading-tight">Siswa</p>
+                        <p id="student-display-class" class="text-[10px] text-slate-500 font-medium">Kelas</p>
+                    </div>
+                    <button onclick="toggleCartDrawer()" class="relative p-2 text-slate-700 hover:text-brand-emerald bg-white rounded-xl border border-slate-200 transition-colors">
+                        <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+                        <span id="cartBadge" class="hidden absolute -top-2 -right-2 bg-brand-emerald text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">0</span>
+                    </button>
+                    <button onclick="logout()" class="p-2 text-red-500 hover:bg-red-50 bg-white rounded-xl border border-slate-200 transition-colors" title="Keluar">
+                        <i data-lucide="log-out" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 max-w-7xl mx-auto px-4 py-8 w-full space-y-12">
+            <!-- AI Recommendation Tool -->
+            <section class="bg-brand-navy rounded-3xl p-6 sm:p-10 relative overflow-hidden shadow-xl">
+                <div class="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
+                    <i data-lucide="cpu" class="w-64 h-64 text-white"></i>
+                </div>
+                <div class="relative z-10 text-white max-w-xl">
+                    <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-medium mb-4">
+                        <i data-lucide="sparkles" class="w-4 h-4"></i> Asisten Belanja AI
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-bold mb-2">Bingung Sesuaikan Budget?</h2>
+                    <p class="text-slate-400 text-sm mb-6">Masukkan sisa uang saku, AI akan meracik produk terbaik untukmu.</p>
+                    
+                    <form onsubmit="generateAIRecommendation(event)" class="flex flex-col sm:flex-row gap-3">
+                        <div class="relative flex-1">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">Rp</span>
+                            <input type="number" id="aiBudget" placeholder="Cth: 15000" min="1000" required class="w-full pl-10 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-brand-emerald text-sm">
+                        </div>
+                        <select id="aiNeed" class="px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-brand-emerald text-sm sm:w-48">
+                            <option value="all">Bebas</option>
+                            <option value="Makanan & Minuman">Makanan/Minuman</option>
+                            <option value="Alat Tulis">Alat Tulis</option>
+                        </select>
+                        <button type="submit" class="px-6 py-3 bg-brand-emerald hover:bg-emerald-600 text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center">
+                            Generate
+                        </button>
+                    </form>
+
+                    <!-- AI Result -->
+                    <div id="aiResult" class="hidden mt-6 pt-6 border-t border-slate-700/50">
+                        <p class="text-xs text-emerald-400 font-semibold mb-3 flex items-center gap-2">
+                            <i data-lucide="check-circle" class="w-4 h-4"></i> Rekomendasi Terhemat:
+                        </p>
+                        <div id="aiRecommendedList" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Catalog Section -->
+            <section id="katalog">
+                <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-brand-navy">Katalog Produk</h2>
+                        <p class="text-slate-500 text-sm mt-1">Pilih barang dan tambahkan ke keranjang.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <div class="relative">
+                            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="text" id="searchInput" oninput="renderStudentCatalog()" placeholder="Cari..." class="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-emerald w-full sm:w-48 shadow-sm">
+                        </div>
+                        <select id="categoryFilter" onchange="renderStudentCatalog()" class="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-emerald text-slate-700 shadow-sm">
+                            <option value="all">Semua Kategori</option>
+                            <option value="Alat Tulis">Alat Tulis</option>
+                            <option value="Makanan & Minuman">Makanan & Minuman</option>
+                            <option value="Kit Praktik">Kit Praktik</option>
+                            <option value="Seragam/Atribut">Seragam/Atribut</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="productGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 3. ADMIN VIEW -->
+    <!-- ========================================== -->
+    <div id="view-admin" class="hidden flex-col min-h-screen w-full bg-slate-50">
+        <!-- Admin Navbar -->
+        <header class="sticky top-0 z-40 bg-brand-navy text-white shadow-md">
+            <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="shield-check" class="w-6 h-6 text-emerald-400"></i>
+                    <span class="text-lg font-bold">Admin Panel</span>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="switchAdminTab('products')" id="tab-btn-products" class="px-4 py-2 rounded-lg text-sm font-semibold bg-white/10 text-white transition-colors">Produk</button>
+                    <button onclick="switchAdminTab('transactions')" id="tab-btn-transactions" class="px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white/5 text-slate-300 transition-colors">Transaksi</button>
+                    <button onclick="logout()" class="ml-4 px-3 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/40 transition-colors" title="Logout">
+                        <i data-lucide="power" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 max-w-7xl mx-auto px-4 py-8 w-full">
+            
+            <!-- ADMIN: PRODUCTS TAB -->
+            <div id="admin-tab-products" class="fade-in block space-y-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800">Manajemen Produk</h2>
+                        <p class="text-sm text-slate-500">Tambah, Edit, Hapus, dan atur stok.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Add Product Form -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-fit">
+                        <h3 class="font-bold text-brand-navy mb-4 flex items-center gap-2">
+                            <i data-lucide="plus-circle" class="w-5 h-5 text-emerald-500"></i> Tambah Produk Baru
+                        </h3>
+                        <form onsubmit="handleAddProduct(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Produk</label>
+                                <input type="text" id="addProdName" required class="w-full px-3 py-2 border rounded-lg text-sm focus:border-emerald-500 focus:outline-none">
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Harga (Rp)</label>
+                                    <input type="number" id="addProdPrice" required min="500" class="w-full px-3 py-2 border rounded-lg text-sm focus:border-emerald-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Stok Awal</label>
+                                    <input type="number" id="addProdStock" required min="1" class="w-full px-3 py-2 border rounded-lg text-sm focus:border-emerald-500 focus:outline-none">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Kategori</label>
+                                <select id="addProdCat" class="w-full px-3 py-2 border rounded-lg text-sm focus:border-emerald-500 focus:outline-none">
+                                    <option value="Alat Tulis">Alat Tulis</option>
+                                    <option value="Makanan & Minuman">Makanan & Minuman</option>
+                                    <option value="Kit Praktik">Kit Praktik</option>
+                                    <option value="Seragam/Atribut">Seragam/Atribut</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">URL Gambar (Opsional)</label>
+                                <input type="url" id="addProdImg" placeholder="https://..." class="w-full px-3 py-2 border rounded-lg text-sm focus:border-emerald-500 focus:outline-none">
+                            </div>
+                            <button type="submit" class="w-full py-2.5 bg-brand-navy hover:bg-slate-800 text-white font-bold rounded-lg text-sm transition-all shadow-md">
+                                Simpan Produk
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Products Table -->
+                    <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="overflow-x-auto max-h-[600px]">
+                            <table class="w-full text-left text-sm whitespace-nowrap">
+                                <thead class="bg-slate-50 sticky top-0 border-b border-slate-200 text-slate-500 z-10">
+                                    <tr>
+                                        <th class="px-4 py-3 font-semibold">Produk</th>
+                                        <th class="px-4 py-3 font-semibold">Kategori</th>
+                                        <th class="px-4 py-3 font-semibold">Harga</th>
+                                        <th class="px-4 py-3 font-semibold text-center">Stok</th>
+                                        <th class="px-4 py-3 font-semibold text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminProductsTable" class="divide-y divide-slate-100">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ADMIN: TRANSACTIONS TAB -->
+            <div id="admin-tab-transactions" class="fade-in hidden space-y-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800">Log Transaksi</h2>
+                        <p class="text-sm text-slate-500">Riwayat pre-order dan pembelian siswa.</p>
+                    </div>
+                    <button onclick="exportTransactionsCSV()" class="px-4 py-2 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 font-bold rounded-lg text-sm transition-all flex items-center gap-2">
+                        <i data-lucide="download" class="w-4 h-4"></i> Export ke CSV
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="overflow-x-auto max-h-[600px]">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-slate-50 sticky top-0 border-b border-slate-200 text-slate-500 z-10">
+                                <tr>
+                                    <th class="px-4 py-3 font-semibold">Waktu</th>
+                                    <th class="px-4 py-3 font-semibold">Kode TRX</th>
+                                    <th class="px-4 py-3 font-semibold">Siswa</th>
+                                    <th class="px-4 py-3 font-semibold">Items</th>
+                                    <th class="px-4 py-3 font-semibold">Total</th>
+                                    <th class="px-4 py-3 font-semibold">Metode</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminTransactionsTable" class="divide-y divide-slate-100">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- COMPONENTS & MODALS -->
+    <!-- ========================================== -->
+
+    <!-- Cart Drawer -->
+    <div id="cartDrawer" class="fixed inset-0 z-50 hidden no-print">
+        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onclick="toggleCartDrawer()"></div>
+        <div class="fixed inset-y-0 right-0 max-w-full flex w-full sm:w-96 transform transition-transform duration-300 translate-x-0" id="cartPanel">
+            <div class="w-full bg-white shadow-2xl flex flex-col h-full border-l border-slate-200">
+                <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                    <h3 class="font-bold text-brand-navy flex items-center gap-2">
+                        <i data-lucide="shopping-cart" class="w-5 h-5 text-emerald-500"></i> Keranjang
+                    </h3>
+                    <button onclick="toggleCartDrawer()" class="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+                
+                <div id="cartItemsContainer" class="flex-1 overflow-y-auto p-4 space-y-3">
+                    <!-- Populated by JS -->
+                </div>
+
+                <div class="p-4 border-t border-slate-100 bg-white">
+                    <div class="flex justify-between items-center mb-4 text-sm font-bold text-slate-800">
+                        <span>Total:</span>
+                        <span id="cartTotalDisplay" class="text-emerald-600 text-lg">Rp 0</span>
+                    </div>
+                    <button onclick="openCheckoutModal()" id="checkoutBtn" disabled class="w-full py-3.5 bg-brand-emerald hover:bg-emerald-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all shadow-md">
+                        Lanjut Pembayaran
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Checkout / Receipt Modal -->
+    <div id="checkoutModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm no-print" onclick="closeCheckoutModal()"></div>
+        
+        <div class="relative bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden z-10 max-h-[90vh] flex flex-col">
+            <button onclick="closeCheckoutModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 z-20 no-print">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <!-- Form Pembayaran (No Print) -->
+            <div id="checkoutFormStep" class="p-6 overflow-y-auto slide-up no-print">
+                <h3 class="text-xl font-bold text-brand-navy mb-1">Konfirmasi Pesanan</h3>
+                <p class="text-xs text-slate-500 mb-6">Pilih metode pembayaran.</p>
+
+                <form onsubmit="processOrder(event)" class="space-y-5">
+                    <div class="space-y-2">
+                        <label class="block text-xs font-semibold text-slate-700">Metode Pembayaran</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="payment" value="QRIS" checked class="peer sr-only" onchange="togglePaymentUI()">
+                                <div class="p-3 text-center border rounded-xl peer-checked:bg-emerald-50 peer-checked:border-emerald-500 peer-checked:text-emerald-700 hover:bg-slate-50 transition-all">
+                                    <i data-lucide="qr-code" class="w-5 h-5 mx-auto mb-1 opacity-70"></i>
+                                    <span class="text-[10px] font-bold block">QRIS</span>
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="payment" value="Transfer" class="peer sr-only" onchange="togglePaymentUI()">
+                                <div class="p-3 text-center border rounded-xl peer-checked:bg-blue-50 peer-checked:border-blue-500 peer-checked:text-blue-700 hover:bg-slate-50 transition-all">
+                                    <i data-lucide="building-2" class="w-5 h-5 mx-auto mb-1 opacity-70"></i>
+                                    <span class="text-[10px] font-bold block">Transfer</span>
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="payment" value="COD" class="peer sr-only" onchange="togglePaymentUI()">
+                                <div class="p-3 text-center border rounded-xl peer-checked:bg-amber-50 peer-checked:border-amber-500 peer-checked:text-amber-700 hover:bg-slate-50 transition-all">
+                                    <i data-lucide="wallet" class="w-5 h-5 mx-auto mb-1 opacity-70"></i>
+                                    <span class="text-[10px] font-bold block">Tunai (COD)</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="paymentUIContainer" class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                        <div id="ui-qris" class="block">
+                            <p class="text-xs text-slate-500 mb-2">Scan QRIS ini untuk membayar via E-Wallet / Bank</p>
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=DUMMY_QRIS_KOPAI_SEKOLAH" alt="QRIS" class="w-32 h-32 mx-auto rounded-lg border p-1 bg-white shadow-sm">
+                        </div>
+                        <div id="ui-transfer" class="hidden">
+                            <p class="text-xs text-slate-500 mb-1">Transfer ke Rekening Koperasi (BCA):</p>
+                            <div class="flex items-center justify-center gap-2 font-mono text-sm font-bold text-slate-800 bg-white border px-3 py-2 rounded mb-1">
+                                <span>123-4567-890</span>
+                                <button type="button" onclick="copyVA('1234567890')" class="p-1 hover:bg-slate-100 rounded text-slate-500" title="Salin VA">
+                                    <i data-lucide="copy" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                            <p class="text-[10px] text-slate-400">a.n Koperasi Digital SmartCoop</p>
+                        </div>
+                        <div id="ui-cod" class="hidden">
+                            <i data-lucide="info" class="w-8 h-8 text-amber-500 mx-auto mb-2"></i>
+                            <p class="text-xs text-slate-600">Siapkan uang pas saat mengambil barang di loket Koperasi.</p>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-100 flex items-center justify-between mt-4">
+                        <div>
+                            <p class="text-xs text-slate-400">Total Tagihan</p>
+                            <p id="checkoutTotalAmount" class="text-xl font-bold text-brand-emerald">Rp 0</p>
+                        </div>
+                        <button type="submit" class="px-6 py-3 bg-brand-navy hover:bg-slate-800 text-white font-bold rounded-xl text-sm transition-all shadow-md">
+                            Bayar Sekarang
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Receipt Step (Improved Print & Save) -->
+            <div id="checkoutSuccessStep" class="hidden p-6 bg-slate-100 h-full flex flex-col justify-center items-center overflow-y-auto">
+                
+                <!-- Receipt Thermal Card -->
+                <div id="print-area" class="bg-white p-6 rounded-lg shadow-sm border border-slate-200 text-slate-800 w-full max-w-sm relative font-mono">
+                    <div class="text-center mb-4 border-b border-dashed border-slate-300 pb-4">
+                        <div class="w-10 h-10 bg-slate-900 text-white rounded-full flex items-center justify-center mx-auto mb-1">
+                            <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+                        </div>
+                        <h2 class="text-lg font-bold text-slate-900 tracking-wider">KopAI SEKOLAH</h2>
+                        <p class="text-[10px] text-slate-500 uppercase">Struk Pembayaran Sah</p>
+                    </div>
+                    
+                    <div class="space-y-1 mb-4 text-xs">
+                        <div class="flex justify-between"><span class="text-slate-500">No. Order:</span> <span class="font-bold" id="receiptOrderCode">ORD-1234</span></div>
+                        <div class="flex justify-between"><span class="text-slate-500">Waktu:</span> <span id="receiptDateTime">-</span></div>
+                        <div class="flex justify-between"><span class="text-slate-500">Nama:</span> <span id="receiptName" class="font-semibold">-</span></div>
+                        <div class="flex justify-between"><span class="text-slate-500">Kelas:</span> <span id="receiptClass">-</span></div>
+                    </div>
+                    
+                    <div class="border-t border-b border-dashed border-slate-300 py-3 mb-4 space-y-2" id="receiptItemList">
+                        <!-- Items injected by JS -->
+                    </div>
+                    
+                    <div class="space-y-1 text-xs">
+                        <div class="flex justify-between font-bold text-sm text-slate-900"><span>TOTAL:</span> <span id="receiptTotal">Rp 0</span></div>
+                        <div class="flex justify-between text-slate-600"><span>PEMBAYARAN:</span> <span id="receiptMethod" class="uppercase font-bold">QRIS</span></div>
+                        <div class="flex justify-between text-emerald-600 font-bold"><span>STATUS:</span> <span>LUNAS / SIAP AMBIL</span></div>
+                    </div>
+                    
+                    <div class="mt-5 text-center text-[10px] text-slate-400 border-t border-dashed border-slate-200 pt-3">
+                        <p>Simpan/Cetak struk ini dan tunjukkan ke petugas koperasi untuk pengambilan barang.</p>
+                    </div>
+                </div>
+
+                <!-- Receipt Action Buttons -->
+                <div class="w-full max-w-sm mt-4 space-y-2 no-print">
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="printReceiptDetails()" class="py-2.5 bg-brand-emerald hover:bg-emerald-600 text-white font-bold rounded-xl text-xs transition-all shadow-md flex items-center justify-center gap-1.5">
+                            <i data-lucide="printer" class="w-4 h-4"></i> Cetak Struk
+                        </button>
+                        <button onclick="downloadReceiptFile()" class="py-2.5 bg-brand-navy hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-all shadow-md flex items-center justify-center gap-1.5">
+                            <i data-lucide="download" class="w-4 h-4"></i> Simpan File (.txt)
+                        </button>
+                    </div>
+                    <button onclick="closeCheckoutModal()" class="w-full py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs transition-all">
+                        Tutup & Kembali
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Edit Product Modal -->
+    <div id="editProductModal" class="fixed inset-0 z-[70] hidden items-center justify-center p-4 no-print">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeEditModal()"></div>
+        <div class="relative bg-white rounded-2xl w-full max-w-md shadow-2xl z-10 p-6 slide-up">
+            <h3 class="font-bold text-brand-navy mb-4 flex items-center gap-2">
+                <i data-lucide="edit" class="w-5 h-5 text-blue-500"></i> Edit Produk
+            </h3>
+            <form onsubmit="saveEditProduct(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Produk</label>
+                    <input type="text" id="editProdName" required class="w-full px-3 py-2 border rounded-lg text-sm focus:border-blue-500 focus:outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Harga (Rp)</label>
+                        <input type="number" id="editProdPrice" required min="500" class="w-full px-3 py-2 border rounded-lg text-sm focus:border-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Stok</label>
+                        <input type="number" id="editProdStock" required min="0" class="w-full px-3 py-2 border rounded-lg text-sm focus:border-blue-500 focus:outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Kategori</label>
+                    <select id="editProdCat" class="w-full px-3 py-2 border rounded-lg text-sm focus:border-blue-500 focus:outline-none">
+                        <option value="Alat Tulis">Alat Tulis</option>
+                        <option value="Makanan & Minuman">Makanan & Minuman</option>
+                        <option value="Kit Praktik">Kit Praktik</option>
+                        <option value="Seragam/Atribut">Seragam/Atribut</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">URL Gambar</label>
+                    <input type="url" id="editProdImg" class="w-full px-3 py-2 border rounded-lg text-sm focus:border-blue-500 focus:outline-none">
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeEditModal()" class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-sm transition-all">Batal</button>
+                    <button type="submit" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-sm transition-all shadow-md">Simpan Perubahan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- JAVASCRIPT LOGIC -->
+    <!-- ========================================== -->
+    <script>
+        // --- SEED DATA & USER REGISTRY ---
+        const defaultProducts = [
+            { id: 1, name: "Buku Tulis A5 (Pack 10)", price: 35000, stock: 25, category: "Alat Tulis", image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&q=80" },
+            { id: 2, name: "Pulpen Gel 0.5mm Black", price: 3500, stock: 50, category: "Alat Tulis", image: "https://images.unsplash.com/photo-1585336261026-6757f541a674?w=400&q=80" },
+            { id: 3, name: "Susu UHT Cokelat 250ml", price: 6000, stock: 30, category: "Makanan & Minuman", image: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=400&q=80" },
+            { id: 4, name: "Roti Cokelat Keju", price: 5000, stock: 15, category: "Makanan & Minuman", image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&q=80" },
+            { id: 5, name: "Kit Praktik Arduino Uno", price: 125000, stock: 8, category: "Kit Praktik", image: "https://images.unsplash.com/photo-1553406830-ef2513450d76?w=400&q=80" },
+            { id: 6, name: "Dasi & Sabuk Koperasi", price: 25000, stock: 20, category: "Seragam/Atribut", image: "https://images.unsplash.com/photo-1588756823695-278bc923f962?w=400&q=80" }
+        ];
+
+        const defaultUsers = [
+            { username: 'siswa', class: 'X PPLG 1', pass: 'siswa123', name: 'Siswa Demo' }
+        ];
+
+        let products = [];
+        let transactions = [];
+        let registeredUsers = [];
+        let cart = [];
+        let currentUser = null;
+        let editingProductId = null;
+        let lastTransactionData = null; // Store for downloading receipt file
+
+        function initData() {
+            const storedProds = localStorage.getItem('kopai_products');
+            const storedTrans = localStorage.getItem('kopai_transactions');
+            const storedUsers = localStorage.getItem('kopai_users');
+
+            if (storedProds) products = JSON.parse(storedProds);
+            else products = [...defaultProducts];
+
+            if (storedTrans) transactions = JSON.parse(storedTrans);
+            else transactions = [];
+
+            if (storedUsers) registeredUsers = JSON.parse(storedUsers);
+            else registeredUsers = [...defaultUsers];
+
+            saveData();
+            lucide.createIcons();
+        }
+
+        function saveData() {
+            localStorage.setItem('kopai_products', JSON.stringify(products));
+            localStorage.setItem('kopai_transactions', JSON.stringify(transactions));
+            localStorage.setItem('kopai_users', JSON.stringify(registeredUsers));
+        }
+
+        // --- AUTH TAB TOGGLE (Login Siswa, Daftar Siswa, Admin) ---
+        function toggleAuthTab(tab) {
+            const btnLoginSiswa = document.getElementById('btn-tab-login-siswa');
+            const btnSignupSiswa = document.getElementById('btn-tab-signup-siswa');
+            const btnLoginAdmin = document.getElementById('btn-tab-login-admin');
+
+            const formLoginSiswa = document.getElementById('form-login-siswa');
+            const formSignupSiswa = document.getElementById('form-signup-siswa');
+            const formLoginAdmin = document.getElementById('form-login-admin');
+
+            // Reset classes
+            [btnLoginSiswa, btnSignupSiswa, btnLoginAdmin].forEach(b => {
+                b.className = "px-4 py-2 text-xs font-semibold rounded-lg text-slate-500 hover:text-slate-800 transition-all whitespace-nowrap";
+            });
+            [formLoginSiswa, formSignupSiswa, formLoginAdmin].forEach(f => f.classList.add('hidden'));
+
+            if (tab === 'login-siswa') {
+                btnLoginSiswa.className = "px-4 py-2 text-xs font-semibold rounded-lg bg-white shadow-sm text-brand-navy transition-all whitespace-nowrap";
+                formLoginSiswa.classList.remove('hidden');
+            } else if (tab === 'signup-siswa') {
+                btnSignupSiswa.className = "px-4 py-2 text-xs font-semibold rounded-lg bg-white shadow-sm text-brand-navy transition-all whitespace-nowrap";
+                formSignupSiswa.classList.remove('hidden');
+            } else if (tab === 'login-admin') {
+                btnLoginAdmin.className = "px-4 py-2 text-xs font-semibold rounded-lg bg-white shadow-sm text-brand-navy transition-all whitespace-nowrap";
+                formLoginAdmin.classList.remove('hidden');
+            }
+            lucide.createIcons();
+        }
+
+        // --- AUTHENTICATION HANDLERS ---
+        function handleRegisterSiswa(e) {
+            e.preventDefault();
+            const username = document.getElementById('regSiswaUser').value.trim();
+            const userClass = document.getElementById('regSiswaClass').value.trim();
+            const pass = document.getElementById('regSiswaPass').value;
+
+            if (registeredUsers.some(u => u.username.toLowerCase() === username.toLowerCase())) {
+                showToast('Username sudah terdaftar! Gunakan nama lain.', 'error');
+                return;
+            }
+
+            const newUser = { username, class: userClass, pass, name: username };
+            registeredUsers.push(newUser);
+            saveData();
+
+            showToast('Akun berhasil dibuat! Silakan masuk.', 'success');
+            
+            // Auto fill login form and switch tab
+            document.getElementById('loginSiswaUser').value = username;
+            document.getElementById('loginSiswaPass').value = pass;
+            toggleAuthTab('login-siswa');
+        }
+
+        function handleLoginSiswa(e) {
+            e.preventDefault();
+            const user = document.getElementById('loginSiswaUser').value.trim();
+            const pass = document.getElementById('loginSiswaPass').value;
+
+            const found = registeredUsers.find(u => u.username.toLowerCase() === user.toLowerCase() && u.pass === pass);
+            
+            if (found) {
+                currentUser = { name: found.name, class: found.class, role: 'siswa' };
+                document.getElementById('student-display-name').innerText = currentUser.name;
+                document.getElementById('student-display-class').innerText = currentUser.class;
+                cart = [];
+                updateCartUI();
+                renderStudentCatalog();
+                
+                showToast(`Selamat datang, ${currentUser.name} (${currentUser.class})!`);
+                switchView('view-student');
+                document.getElementById('loginSiswaPass').value = '';
+            } else {
+                showToast('Username atau password salah!', 'error');
+            }
+        }
+
+        function handleLoginAdmin(e) {
+            e.preventDefault();
+            const user = document.getElementById('loginAdminUser').value.trim();
+            const pass = document.getElementById('loginAdminPass').value;
+            
+            if (user === 'admin' && pass === 'admin123') {
+                currentUser = { name: 'Administrator', role: 'admin' };
+                renderAdminProducts();
+                renderAdminTransactions();
+                showToast('Login Admin berhasil!');
+                switchView('view-admin');
+                document.getElementById('loginAdminPass').value = '';
+            } else {
+                showToast('Username atau password salah!', 'error');
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            showToast('Berhasil keluar.');
+            switchView('view-login');
+        }
+
+        function copyVA(text) {
+            const temp = document.createElement('input');
+            document.body.appendChild(temp);
+            temp.value = text;
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            showToast('Nomor Rekening disalin!');
+        }
+
+        // --- PROCESS ORDER & GENERATE RECEIPT ---
+        function processOrder(e) {
+            e.preventDefault();
+            if (cart.length === 0) return;
+
+            const method = document.querySelector('input[name="payment"]:checked').value;
+            const total = cart.reduce((s, i) => s + (i.price * i.qty), 0);
+            const orderId = 'ORD-' + Math.floor(1000 + Math.random() * 9000);
+            const dateStr = new Date().toLocaleString('id-ID');
+            
+            const itemsStr = cart.map(i => `${i.qty}x ${i.name}`).join(', ');
+
+            // Save state for File Export
+            lastTransactionData = {
+                id: orderId,
+                date: dateStr,
+                siswa: currentUser.name,
+                kelas: currentUser.class,
+                itemsStr: itemsStr,
+                cartItems: [...cart],
+                total: total,
+                method: method
+            };
+
+            // Deduct Stock
+            cart.forEach(ci => {
+                const prod = products.find(p => p.id === ci.id);
+                if(prod) prod.stock -= ci.qty;
+            });
+
+            // Create Transaction Record
+            const trans = {
+                id: orderId,
+                date: dateStr,
+                siswa: currentUser.name,
+                kelas: currentUser.class,
+                items: itemsStr,
+                total: total,
+                method: method
+            };
+            transactions.unshift(trans);
+            saveData();
+
+            // Populate Digital Receipt UI
+            document.getElementById('receiptOrderCode').innerText = orderId;
+            document.getElementById('receiptDateTime').innerText = dateStr;
+            document.getElementById('receiptName').innerText = currentUser ? currentUser.name : 'Siswa';
+            document.getElementById('receiptClass').innerText = currentUser ? currentUser.class : '-';
+            document.getElementById('receiptMethod').innerText = method;
+            document.getElementById('receiptTotal').innerText = formatRupiah(total);
+
+            // Itemized list for receipt
+            let itemsHTML = '';
+            cart.forEach(item => {
+                itemsHTML += `
+                    <div class="flex justify-between text-xs items-start">
+                        <div class="flex-1 pr-2">
+                            <span class="font-semibold text-slate-800">${item.name}</span>
+                            <div class="text-[10px] text-slate-500">${item.qty} x ${formatRupiah(item.price)}</div>
+                        </div>
+                        <span class="font-bold text-slate-900 whitespace-nowrap">${formatRupiah(item.price * item.qty)}</span>
+                    </div>
+                `;
+            });
+            document.getElementById('receiptItemList').innerHTML = itemsHTML;
+
+            // Switch to receipt view
+            const formStep = document.getElementById('checkoutFormStep');
+            const successStep = document.getElementById('checkoutSuccessStep');
+            
+            formStep.classList.add('hidden');
+            successStep.classList.remove('hidden');
+            successStep.classList.add('flex');
+
+            cart = [];
+            updateCartUI();
+            renderStudentCatalog();
+            showToast('Pesanan berhasil dibuat!');
+        }
+
+        // --- PRINT RECEIPT (Dedicated Popup Window) ---
+        function printReceiptDetails() {
+            const printContent = document.getElementById('print-area').innerHTML;
+            const printWin = window.open('', '_blank', 'width=400,height=600');
+            
+            if (printWin) {
+                printWin.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Cetak Struk KopAI</title>
+                        <script src="https://cdn.tailwindcss.com"><\/script>
+                        <style>
+                            body { font-family: monospace; background: #fff; padding: 20px; display: flex; justify-content: center; }
+                            .receipt { border: 1px dashed #cbd5e1; padding: 20px; border-radius: 8px; max-width: 320px; width: 100%; }
+                        </style>
+                    </head>
+                    <body onload="window.print(); setTimeout(() => window.close(), 500);">
+                        <div class="receipt">${printContent}</div>
+                    </body>
+                    </html>
+                `);
+                printWin.document.close();
+            } else {
+                window.print();
+            }
+        }
+
+        // --- DOWNLOAD RECEIPT AS TEXT FILE ---
+        function downloadReceiptFile() {
+            if (!lastTransactionData) {
+                showToast('Data transaksi tidak ditemukan', 'error');
+                return;
+            }
+            const t = lastTransactionData;
+            let text = `===================================\n`;
+            text += `       KOPAI - SMARTCOOP SEKOLAH    \n`;
+            text += `    Koperasi Digital Berbasis AI    \n`;
+            text += `===================================\n`;
+            text += `No. Order : ${t.id}\n`;
+            text += `Waktu     : ${t.date}\n`;
+            text += `Siswa     : ${t.siswa}\n`;
+            text += `Kelas     : ${t.kelas}\n`;
+            text += `-----------------------------------\n`;
+            text += `RINCIAN ITEM:\n`;
+            t.cartItems.forEach(item => {
+                text += `- ${item.name} (${item.qty}x) : Rp ${(item.price * item.qty).toLocaleString('id-ID')}\n`;
+            });
+            text += `-----------------------------------\n`;
+            text += `TOTAL BAYAR : Rp ${t.total.toLocaleString('id-ID')}\n`;
+            text += `METODE      : ${t.method}\n`;
+            text += `STATUS      : LUNAS / SIAP DIAMBIL\n`;
+            text += `===================================\n`;
+            text += ` Tunjukkan file ini ke Petugas     \n`;
+            text += ` untuk mengambil barang di Koperasi\n`;
+            text += `===================================\n`;
+
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Struk_KopAI_${t.id}.txt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+            showToast('Struk berhasil diunduh ke HP/Laptop!');
+        }
+
+        // --- UTILS ---
+        const formatRupiah = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const colorClass = type === 'error' ? 'bg-red-500' : (type === 'warning' ? 'bg-amber-500' : 'bg-emerald-600');
+            
+            toast.className = `${colorClass} text-white px-4 py-2.5 rounded-lg shadow-lg text-sm font-semibold flex items-center gap-2 slide-up pointer-events-auto`;
+            toast.innerHTML = `<i data-lucide="${type === 'error' ? 'alert-circle' : 'check-circle'}" class="w-4 h-4"></i> ${message}`;
+            
+            container.appendChild(toast);
+            lucide.createIcons();
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // --- VIEW SWITCHING ---
+        function switchView(viewId) {
+            document.getElementById('view-login').classList.add('hidden');
+            document.getElementById('view-student').classList.add('hidden');
+            document.getElementById('view-admin').classList.add('hidden');
+            
+            document.getElementById('view-login').classList.remove('flex');
+            document.getElementById('view-student').classList.remove('flex');
+            document.getElementById('view-admin').classList.remove('flex');
+
+            const view = document.getElementById(viewId);
+            view.classList.remove('hidden');
+            view.classList.add('flex');
+            lucide.createIcons();
+        }
+
+        // ==========================================
+        // STUDENT DASHBOARD LOGIC
+        // ==========================================
+        function renderStudentCatalog() {
+            const container = document.getElementById('productGrid');
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const category = document.getElementById('categoryFilter').value;
+
+            const filtered = products.filter(p => {
+                const matchSearch = p.name.toLowerCase().includes(search) || p.category.toLowerCase().includes(search);
+                const matchCat = category === 'all' || p.category === category;
+                return matchSearch && matchCat;
+            });
+
+            container.innerHTML = '';
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400">Tidak ada produk ditemukan.</div>`;
+                return;
+            }
+
+            filtered.forEach(p => {
+                const btnDisabled = p.stock <= 0 ? 'disabled class="p-2 bg-slate-200 text-slate-400 rounded-xl cursor-not-allowed"' : `onclick="addToCart(${p.id})" class="p-2 bg-brand-navy hover:bg-brand-emerald text-white rounded-xl transition-colors shadow-sm"`;
+                
+                container.innerHTML += `
+                    <div class="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group relative">
+                        ${p.stock <= 0 ? '<div class="absolute inset-0 bg-white/60 z-10 flex items-center justify-center backdrop-blur-[1px]"><span class="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full">HABIS</span></div>' : ''}
+                        <div class="h-32 sm:h-40 overflow-hidden bg-slate-100">
+                            <img src="${p.image || 'https://placehold.co/400x300/e2e8f0/475569?text=Image'}" onerror="this.src='https://placehold.co/400x300/e2e8f0/475569?text=Image'" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                        </div>
+                        <div class="p-3 sm:p-4 flex-1 flex flex-col justify-between">
+                            <div>
+                                <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">${p.category}</span>
+                                <h3 class="font-bold text-slate-800 text-xs sm:text-sm mt-0.5 line-clamp-2">${p.name}</h3>
+                            </div>
+                            <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+                                <div>
+                                    <p class="text-[10px] text-slate-400">Stok: ${p.stock}</p>
+                                    <p class="text-sm sm:text-base font-extrabold text-brand-navy">${formatRupiah(p.price)}</p>
+                                </div>
+                                <button ${btnDisabled} title="Tambah ke Keranjang">
+                                    <i data-lucide="plus" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        // --- AI LOGIC ---
+        function generateAIRecommendation(e) {
+            e.preventDefault();
+            const budget = parseInt(document.getElementById('aiBudget').value);
+            const need = document.getElementById('aiNeed').value;
+            
+            let available = products.filter(p => p.price <= budget && p.stock > 0);
+            
+            if(need !== 'all') {
+                available.sort((a,b) => {
+                    if(a.category === need && b.category !== need) return -1;
+                    if(a.category !== need && b.category === need) return 1;
+                    return a.price - b.price;
+                });
+            } else {
+                available.sort((a,b) => a.price - b.price); 
+            }
+
+            let selected = [];
+            let total = 0;
+            for(let item of available) {
+                if(total + item.price <= budget) {
+                    selected.push(item);
+                    total += item.price;
+                }
+            }
+
+            const resultBox = document.getElementById('aiResult');
+            const list = document.getElementById('aiRecommendedList');
+            list.innerHTML = '';
+
+            if(selected.length === 0) {
+                list.innerHTML = `<div class="col-span-full text-xs text-slate-400 py-2">Uang saku tidak cukup untuk membeli produk yang tersedia.</div>`;
+            } else {
+                selected.forEach(p => {
+                    list.innerHTML += `
+                        <div class="bg-slate-800 p-3 rounded-xl border border-slate-600 flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-bold text-white line-clamp-1">${p.name}</p>
+                                <p class="text-[10px] text-emerald-400">${formatRupiah(p.price)}</p>
+                            </div>
+                            <button onclick="addToCart(${p.id})" class="px-2 py-1 bg-white/10 hover:bg-brand-emerald rounded text-[10px] font-bold transition-colors">
+                                + Cart
+                            </button>
+                        </div>
+                    `;
+                });
+            }
+            resultBox.classList.remove('hidden');
+        }
+
+        // --- CART LOGIC ---
+        function addToCart(id) {
+            const prod = products.find(p => p.id === id);
+            if(!prod || prod.stock <= 0) return;
+
+            const existing = cart.find(i => i.id === id);
+            if(existing) {
+                if(existing.qty >= prod.stock) {
+                    showToast('Stok tidak mencukupi!', 'warning');
+                    return;
+                }
+                existing.qty++;
+            } else {
+                cart.push({...prod, qty: 1});
+            }
+            
+            showToast(`${prod.name} ditambahkan!`);
+            updateCartUI();
+        }
+
+        function updateCartQty(id, delta) {
+            const item = cart.find(i => i.id === id);
+            if(!item) return;
+
+            const prod = products.find(p => p.id === id);
+            if(delta > 0 && item.qty >= prod.stock) {
+                showToast('Maksimal stok tercapai', 'warning');
+                return;
+            }
+
+            item.qty += delta;
+            if(item.qty <= 0) cart = cart.filter(i => i.id !== id);
+            updateCartUI();
+        }
+
+        function updateCartUI() {
+            const container = document.getElementById('cartItemsContainer');
+            const badge = document.getElementById('cartBadge');
+            const totalDisp = document.getElementById('cartTotalDisplay');
+            const btn = document.getElementById('checkoutBtn');
+
+            const totalQty = cart.reduce((sum, i) => sum + i.qty, 0);
+            const totalCost = cart.reduce((sum, i) => sum + (i.price * i.qty), 0);
+
+            badge.innerText = totalQty;
+            totalQty > 0 ? badge.classList.remove('hidden') : badge.classList.add('hidden');
+            btn.disabled = totalQty === 0;
+            totalDisp.innerText = formatRupiah(totalCost);
+            document.getElementById('checkoutTotalAmount').innerText = formatRupiah(totalCost);
+
+            container.innerHTML = '';
+            if(cart.length === 0) {
+                container.innerHTML = `<div class="text-center py-10 text-slate-400 text-sm"><i data-lucide="shopping-cart" class="w-10 h-10 mx-auto mb-2 opacity-50"></i>Keranjang kosong</div>`;
+            } else {
+                cart.forEach(item => {
+                    container.innerHTML += `
+                        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
+                            <div class="flex-1 mr-3 overflow-hidden">
+                                <h4 class="text-xs font-bold text-slate-800 truncate">${item.name}</h4>
+                                <p class="text-[10px] text-brand-emerald font-semibold">${formatRupiah(item.price)}</p>
+                            </div>
+                            <div class="flex items-center space-x-1">
+                                <button onclick="updateCartQty(${item.id}, -1)" class="w-6 h-6 bg-white rounded border flex justify-center items-center text-slate-600 hover:bg-slate-100 text-xs font-bold">-</button>
+                                <span class="text-xs font-bold w-4 text-center">${item.qty}</span>
+                                <button onclick="updateCartQty(${item.id}, 1)" class="w-6 h-6 bg-white rounded border flex justify-center items-center text-slate-600 hover:bg-slate-100 text-xs font-bold">+</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            lucide.createIcons();
+        }
+
+        function toggleCartDrawer() {
+            const drawer = document.getElementById('cartDrawer');
+            drawer.classList.toggle('hidden');
+        }
+
+        // --- CHECKOUT LOGIC & RECEIPT ---
+        function openCheckoutModal() {
+            toggleCartDrawer();
+            const modal = document.getElementById('checkoutModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            const formStep = document.getElementById('checkoutFormStep');
+            formStep.classList.remove('hidden');
+            
+            const successStep = document.getElementById('checkoutSuccessStep');
+            successStep.classList.add('hidden');
+            successStep.classList.remove('flex');
+            
+            togglePaymentUI(); 
+        }
+
+        function closeCheckoutModal() {
+            const modal = document.getElementById('checkoutModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function togglePaymentUI() {
+            const method = document.querySelector('input[name="payment"]:checked').value;
+            document.getElementById('ui-qris').classList.add('hidden');
+            document.getElementById('ui-transfer').classList.add('hidden');
+            document.getElementById('ui-cod').classList.add('hidden');
+            
+            if(method === 'QRIS') document.getElementById('ui-qris').classList.remove('hidden');
+            else if(method === 'Transfer') document.getElementById('ui-transfer').classList.remove('hidden');
+            else if(method === 'COD') document.getElementById('ui-cod').classList.remove('hidden');
+        }
+
+        // ==========================================
+        // ADMIN DASHBOARD LOGIC (CRUD)
+        // ==========================================
+        function switchAdminTab(tab) {
+            document.getElementById('admin-tab-products').classList.add('hidden');
+            document.getElementById('admin-tab-transactions').classList.add('hidden');
+            
+            document.getElementById('tab-btn-products').className = "px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white/5 text-slate-300 transition-colors";
+            document.getElementById('tab-btn-transactions').className = "px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white/5 text-slate-300 transition-colors";
+            
+            document.getElementById(`admin-tab-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-btn-${tab}`).className = "px-4 py-2 rounded-lg text-sm font-semibold bg-white/10 text-white transition-colors";
+        }
+
+        function renderAdminProducts() {
+            const tbody = document.getElementById('adminProductsTable');
+            tbody.innerHTML = '';
+            
+            if(products.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-slate-400">Belum ada produk</td></tr>`;
+                return;
+            }
+
+            products.forEach(p => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-3">
+                                <img src="${p.image || 'https://placehold.co/40'}" class="w-10 h-10 rounded-lg object-cover bg-slate-200" onerror="this.src='https://placehold.co/40'">
+                                <span class="font-semibold text-slate-800 max-w-[200px] truncate" title="${p.name}">${p.name}</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 text-xs text-slate-500">${p.category}</td>
+                        <td class="px-4 py-3 font-semibold text-brand-emerald">${formatRupiah(p.price)}</td>
+                        <td class="px-4 py-3 text-center">
+                            <span class="px-2 py-1 rounded-lg text-xs font-bold ${p.stock > 10 ? 'bg-emerald-100 text-emerald-700' : (p.stock > 0 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')}">${p.stock}</span>
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            <div class="flex items-center justify-center gap-1">
+                                <button onclick="openEditModal(${p.id})" class="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Edit">
+                                    <i data-lucide="edit" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="deleteProduct(${p.id})" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors" title="Hapus">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        // Add Product
+        function handleAddProduct(e) {
+            e.preventDefault();
+            const name = document.getElementById('addProdName').value;
+            const price = parseInt(document.getElementById('addProdPrice').value);
+            const stock = parseInt(document.getElementById('addProdStock').value);
+            const category = document.getElementById('addProdCat').value;
+            let image = document.getElementById('addProdImg').value.trim();
+
+            if(!image) image = "https://images.unsplash.com/photo-1579762593175-20226054cad0?w=400&q=80"; // fallback
+
+            const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
+            products.push({ id: newId, name, price, stock, category, image });
+            
+            saveData();
+            e.target.reset();
+            renderAdminProducts();
+            showToast('Produk berhasil ditambahkan!');
+        }
+
+        // Edit Product
+        function openEditModal(id) {
+            const p = products.find(x => x.id === id);
+            if(!p) return;
+            
+            editingProductId = id;
+            document.getElementById('editProdName').value = p.name;
+            document.getElementById('editProdPrice').value = p.price;
+            document.getElementById('editProdStock').value = p.stock;
+            document.getElementById('editProdCat').value = p.category;
+            document.getElementById('editProdImg').value = p.image || '';
+            
+            document.getElementById('editProductModal').classList.remove('hidden');
+            document.getElementById('editProductModal').classList.add('flex');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editProductModal').classList.add('hidden');
+            document.getElementById('editProductModal').classList.remove('flex');
+            editingProductId = null;
+        }
+
+        function saveEditProduct(e) {
+            e.preventDefault();
+            const p = products.find(x => x.id === editingProductId);
+            if(p) {
+                p.name = document.getElementById('editProdName').value;
+                p.price = parseInt(document.getElementById('editProdPrice').value);
+                p.stock = parseInt(document.getElementById('editProdStock').value);
+                p.category = document.getElementById('editProdCat').value;
+                p.image = document.getElementById('editProdImg').value;
+                
+                saveData();
+                renderAdminProducts();
+                closeEditModal();
+                showToast('Produk berhasil diperbarui!');
+            }
+        }
+
+        // Delete Product
+        function deleteProduct(id) {
+            products = products.filter(p => p.id !== id);
+            saveData();
+            renderAdminProducts();
+            showToast('Produk dihapus', 'warning');
+        }
+
+        // Transactions Logging
+        function renderAdminTransactions() {
+            const tbody = document.getElementById('adminTransactionsTable');
+            tbody.innerHTML = '';
+            
+            if(transactions.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">Belum ada transaksi</td></tr>`;
+                return;
+            }
+
+            transactions.forEach(t => {
+                let badgeColor = t.method === 'QRIS' ? 'bg-blue-100 text-blue-700' : (t.method === 'Transfer' ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700');
+                
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-4 py-3 text-xs text-slate-500">${t.date}</td>
+                        <td class="px-4 py-3 font-mono text-xs font-bold text-slate-700">${t.id}</td>
+                        <td class="px-4 py-3">
+                            <p class="font-semibold text-slate-800 text-xs">${t.siswa}</p>
+                        </td>
+                        <td class="px-4 py-3 text-xs max-w-[200px] truncate text-slate-600" title="${t.items}">${t.items}</td>
+                        <td class="px-4 py-3 font-bold text-brand-emerald text-sm">${formatRupiah(t.total)}</td>
+                        <td class="px-4 py-3">
+                            <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${badgeColor}">${t.method}</span>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function exportTransactionsCSV() {
+            if(transactions.length === 0) {
+                showToast('Tidak ada data untuk diexport', 'warning');
+                return;
+            }
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Tanggal,Kode TRX,Nama Siswa,Kelas,Item Dibeli,Total,Metode Pembayaran\n";
+            
+            transactions.forEach(t => {
+                const safeItems = `"${t.items.replace(/"/g, '""')}"`;
+                const row = `${t.date},${t.id},${t.siswa},${t.kelas},${safeItems},${t.total},${t.method}`;
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `KopAI_Transactions_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('Berhasil mengunduh CSV!');
+        }
+
+        // Init
+        window.onload = initData;
+    </script>
+</body>
+</html>
